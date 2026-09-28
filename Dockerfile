@@ -21,14 +21,39 @@
 #            docker images day12-agent:prod     # xem dung lượng
 # ═══════════════════════════════════════════════════════════════════
 
-FROM python:3.11
+# ── Stage 1: builder — cài dependency vào /install, stage này bị vứt đi ──
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Chỉ copy requirements.txt trước: sửa code không làm mất cache layer pip install
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+
+# ── Stage 2: runtime — chỉ mang theo thư viện đã cài và code cần chạy ──
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY --from=builder /install /usr/local
+
+# User thường, không có quyền root
+RUN useradd --create-home --uid 10001 appuser
 
 WORKDIR /app
+COPY --chown=appuser:appuser app ./app
+COPY --chown=appuser:appuser utils ./utils
 
-COPY . .
-
-RUN pip install -r requirements.txt
+USER appuser
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# urlopen ném lỗi khi /health không trả 2xx (kể cả 503 lúc đang tắt) → unhealthy
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import sys, urllib.request; urllib.request.urlopen(sys.argv[1], timeout=3)" \
+    "http://127.0.0.1:${PORT:-8000}/health" || exit 1
+
+# `exec` để uvicorn thay thế sh thành PID 1 và nhận SIGTERM trực tiếp (CP4)
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
