@@ -10,17 +10,17 @@
 
 | Mục | Nội dung |
 |-----|----------|
-| Họ và tên | (điền họ tên) |
-| Mã học viên | (điền mã học viên) |
-| Repo | (điền link repo K4-L3A-DAY12-HoVaTen-MSSV-CloudServicesAndDeployment) |
+| Họ và tên | Phan Văn Nghị |
+| Mã học viên | 2A202602632 |
+| Repo | https://github.com/vannghj/K4-L3A-DAY12-PhanVanNghi-2A202602632-CloudServicesAndDeployment |
 
 ## Service
 
 | Mục | Nội dung |
 |-----|----------|
-| Public URL | https://TODO-thay-bang-url-that.up.railway.app |
-| Platform | Railway / Render / Cloud Run — (điền platform bạn dùng) |
-| Ngày deploy | (điền ngày) |
+| Public URL | https://agent-production-4d7f.up.railway.app |
+| Platform | Railway (deploy bằng `railway up` từ Dockerfile, cấu hình theo `railway.toml`) |
+| Ngày deploy | 2026-09-28 |
 
 ## Biến Môi Trường Đã Set Trên Cloud
 
@@ -30,7 +30,7 @@ Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
 |------|--------|---------|
 | `PORT` | ✅ | platform tự gán |
 | `AGENT_API_KEY` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | (điền: Redis add-on của platform / Upstash / ...) |
+| `REDIS_URL` | ✅ | Redis add-on của Railway (`railway add --database redis`), tham chiếu `${{Redis.REDIS_URL}}` → `redis.railway.internal` |
 | `RATE_LIMIT_PER_MINUTE` | ✅ | 10 |
 | `MONTHLY_BUDGET_USD` | ✅ | 10.0 |
 | `LOG_LEVEL` | ✅ | INFO |
@@ -73,7 +73,31 @@ done; echo
 Dán output của các lệnh trên vào đây:
 
 ```
-(điền output)
+$ curl -i <URL>/health
+HTTP/2 200 
+
+{"status":"ok","service":"day12-agent","version":"1.0.0"}
+
+$ curl -i <URL>/ready
+HTTP/2 200 
+
+{"status":"ready","redis":true}
+
+$ curl -i -X POST <URL>/ask (không có API key)
+HTTP/2 401 
+
+{"detail":"invalid or missing API key"}
+
+$ curl -i -X POST <URL>/ask (có API key)
+HTTP/2 200 
+
+{"answer":"Câu hỏi hay. Deploy là gì thường được giải quyết bằng cách chuẩn hóa môi trường chạy: cùng một image chạy giống nhau ở laptop và trên cloud.","user_id":"sv-test","history_length":0,"cost_usd":2.145e-05,"tokens":{"in":3,"out":35}}
+
+$ rate limit: gọi 15 lần
+200 200 200 200 200 200 200 200 200 429 429 429 429 429 429
+
+# Lần gọi thứ 10 đã 429 vì request có key ở bước 4 cũng dùng user sv-test:
+# 1 + 9 = 10 request trong 60 giây = đúng hạn mức RATE_LIMIT_PER_MINUTE=10.
 ```
 
 ## Ảnh Chụp Màn Hình
@@ -97,5 +121,5 @@ Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng
 5. Ghi rõ lý do không deploy được vào phần dưới đây:
 
 ```
-(điền lý do nếu dùng phương án dự phòng, ngược lại xóa mục này)
+Không dùng phương án dự phòng — đã deploy lên Railway (xem Public URL ở trên).
 ```
